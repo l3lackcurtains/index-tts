@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from tts import TTSGenerator
 
 class TTSRequest(BaseModel):
-    voice_name: str
+    name: str  # Changed from voice_name to name
     text: str
 
 app = FastAPI(title="TTS API")
@@ -22,18 +22,18 @@ def list_voices():
         "voices": tts_generator.get_available_voices()
     }
 
-@app.post("/generate")
-def generate_speech(request: TTSRequest):
+@app.post("/generate-audio")  # New endpoint
+def generate_audio(request: TTSRequest):
     """
     Generate speech from text using the specified voice
     
     Args:
-        request: TTSRequest containing voice_name and text
+        request: TTSRequest containing name and text
     """
     try:
         # Generate speech
         result = tts_generator.generate(
-            voice_name=request.voice_name,
+            voice_name=request.name,  # Using name from request
             text=request.text
         )
         
@@ -51,11 +51,20 @@ def generate_speech(request: TTSRequest):
         # Return the WAV file data
         return Response(
             content=wav_buffer.getvalue(),
-            media_type="audio/wav"
+            media_type="audio/wav",
+            headers={
+                "X-Generation-Time": f"{result.get('generation_time', 0):.2f}s"
+            }
         )
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# Keep the old endpoint for backward compatibility
+@app.post("/generate")
+def generate_speech(request: TTSRequest):
+    """Deprecated: Use /generate-audio instead"""
+    return generate_audio(request)
 
 @app.get("/health")
 def health_check():
