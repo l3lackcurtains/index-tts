@@ -26,7 +26,7 @@ def list_voices():
         "voices": tts_generator.get_available_voices()
     }
 
-@app.post("/generate/")
+@app.post("/generate")
 def generate_speech(request: TTSRequest):
     """
     Generate speech from text using the specified voice

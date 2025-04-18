@@ -38,7 +38,7 @@ class TTSGenerator:
             voice_name: Name of the voice to use (must be in available_voices)
             text: Text to convert to speech
             output_path: Where to save the generated audio
-            
+        
         Returns:
             dict containing generation stats
         """
@@ -49,13 +49,15 @@ class TTSGenerator:
                 "execution_time": None,
                 "output_path": None
             }
-            
+        
+        print(f"Starting audio generation for text: {text[:50]}...")
         start_time = time.time()
         
         try:
             # Ensure output directory exists
             Path(output_path).parent.mkdir(parents=True, exist_ok=True)
             
+            print("Generating audio with TTS model...")
             # Generate audio
             with torch.inference_mode():
                 self.tts.infer(
@@ -67,6 +69,9 @@ class TTSGenerator:
             end_time = time.time()
             execution_time = end_time - start_time
             
+            print(f"Audio generation completed in {execution_time:.2f} seconds")
+            print(f"Output saved to: {output_path}")
+            
             return {
                 "success": True,
                 "message": "Audio generated successfully",
@@ -75,6 +80,7 @@ class TTSGenerator:
             }
             
         except Exception as e:
+            print(f"Error during audio generation: {str(e)}")
             return {
                 "success": False,
                 "message": f"Error generating audio: {str(e)}",
@@ -83,11 +89,24 @@ class TTSGenerator:
             }
 
 if __name__ == "__main__":
-    # Test the TTS generator
+    print("Initializing TTS Generator...")
+    init_start = time.time()
     generator = TTSGenerator()
+    init_time = time.time() - init_start
+    print(f"Initialization completed in {init_time:.2f} seconds")
+
+    # Test the TTS generator
+    test_text = "Hello, this is a test of the TTS system."
+    print(f"\nGenerating test audio with text: {test_text}")
     result = generator.generate(
         voice_name="coolio_1",
-        text="Hello, this is a test of the TTS system.",
+        text=test_text,
         output_path="output/test.wav"
     )
-    print(result)
+    
+    if result["success"]:
+        print(f"\nSummary:")
+        print(f"- Total generation time: {result['execution_time']} seconds")
+        print(f"- Output file: {result['output_path']}")
+    else:
+        print(f"\nGeneration failed: {result['message']}")
