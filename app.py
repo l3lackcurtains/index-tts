@@ -1,9 +1,9 @@
 
-import uuid
+import io
+import wave
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import Response
 from pydantic import BaseModel
-from pathlib import Path
 from tts import TTSGenerator
 
 class TTSRequest(BaseModel):
@@ -14,10 +14,6 @@ app = FastAPI(title="TTS API")
 
 # Initialize TTS Generator
 tts_generator = TTSGenerator()
-
-# Create directory for outputs
-OUTPUT_DIR = Path("outputs")
-OUTPUT_DIR.mkdir(exist_ok=True)
 
 @app.get("/voices")
 def list_voices():
@@ -35,25 +31,27 @@ def generate_speech(request: TTSRequest):
         request: TTSRequest containing voice_name and text
     """
     try:
-        # Generate unique filename for output
-        output_filename = f"{uuid.uuid4()}.wav"
-        output_path = OUTPUT_DIR / output_filename
-        
         # Generate speech
         result = tts_generator.generate(
             voice_name=request.voice_name,
-            text=request.text,
-            output_path=str(output_path)
+            text=request.text
         )
         
         if not result["success"]:
             raise HTTPException(status_code=400, detail=result["message"])
+        
+        # Create WAV file in memory
+        wav_buffer = io.BytesIO()
+        with wave.open(wav_buffer, 'wb') as wav_file:
+            wav_file.setnchannels(1)  # mono
+            wav_file.setsampwidth(2)  # 16-bit
+            wav_file.setframerate(24000)  # sample rate
+            wav_file.writeframes(result["audio_data"].tobytes())
             
-        # Return the generated audio file
-        return FileResponse(
-            output_path,
-            media_type="audio/wav",
-            filename="generated_speech.wav"
+        # Return the WAV file data
+        return Response(
+            content=wav_buffer.getvalue(),
+            media_type="audio/wav"
         )
         
     except Exception as e:
